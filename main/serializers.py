@@ -9,11 +9,11 @@ class ImageSerializer(serializers.ModelSerializer):
         fields = ('image', )
 
 
-class PostSerializer(serializers.ModelSerializer):
+class ProjectSerializer(serializers.ModelSerializer):
     author = serializers.ReadOnlyField(source='author.email')
 
     class Meta:
-        model = Post
+        model = Project
         fields = ('id', 'title', 'text', 'author', )
 
     def to_representation(self, instance):
@@ -34,10 +34,10 @@ class PostSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         images_data = request.FILES
         print(request.user)
-        post = Post.objects.create(author=request.user, **validated_data)
+        project = Project.objects.create(author=request.user, **validated_data)
         for image in images_data.getlist('images'):
-            CodeImage.objects.create(image=image, post=post)
-        return post
+            CodeImage.objects.create(image=image, project=project)
+        return project
 
     def update(self, instance, validated_data):
         request = self.context.get('request')
@@ -58,7 +58,7 @@ class ReplySerializer(serializers.ModelSerializer):
     author = serializers.ReadOnlyField(source='author.email')
 
     class Meta:
-        model = Reply
+        model = Feedback
         fields = '__all__'
 
     def to_representation(self, instance):
@@ -68,29 +68,29 @@ class ReplySerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         request = self.context.get('request')
-        reply = Reply.objects.create(
+        reply = Feedback.objects.create(
             author=request.user,
             **validated_data
         )
         return reply
 
-
-class StarSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Star
-        fields = ['star', ]
-
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        star = Post.objects.get('star')
-        action = self.context.get('action')
-
-        if star == False:
-            representation['star'] = True
-        elif star == True:
-            representation['star'] = False
-
-        return representation
+#
+# class StarSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Star
+#         fields = ['star', ]
+#
+#     def to_representation(self, instance):
+#         representation = super().to_representation(instance)
+#         star = Project.objects.get('star')
+#         action = self.context.get('action')
+#
+#         if star == False:
+#             representation['star'] = True
+#         elif star == True:
+#             representation['star'] = False
+#
+#         return representation
 
 
 

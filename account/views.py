@@ -33,14 +33,14 @@ class ActivateView(APIView):
         return Response('Your account successfully activated', status=status.HTTP_200_OK)
 
 
-# class LoginView(ObtainAuthToken):
-#     serializer_class = LoginSerializer
-#
-#
-# class LogoutVew(APIView):
-#     permission_classes = [IsAuthenticated, ]
-#
-#     def post(self, request):
-#         user = request.user
-#         Token.objects.filter(user=user)
-#         return Response('Successfully logged out', status=status.HTTP_200_OK)
+class LoginView(ObtainAuthToken):
+    serializer_class = LoginSerializer
+
+
+class LogoutVew(APIView):
+    permission_classes = [IsAuthenticated, ]
+
+    def post(self, request):
+        user = request.user
+        Token.objects.filter(user=user)
+        return Response('Successfully logged out', status=status.HTTP_200_OK)

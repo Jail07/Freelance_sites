@@ -8,15 +8,15 @@ class CodeImageInLine(admin.TabularInline):
     max_num = 10
 
 
-class StarInline(admin.TabularInline):
-    model = Star
-    max_num = 1
+# class StarInline(admin.TabularInline):
+#     model = Star
+#     max_num = 1
 
 
-@admin.register(Post)
-class PostAdmin(admin.ModelAdmin):
-    inlines = [CodeImageInLine, StarInline, ]
+# @admin.register(Project)
+# class PostAdmin(admin.ModelAdmin):
+#     inlines = [CodeImageInLine, StarInline, ]
 
 
-admin.site.register(Reply)
+admin.site.register(Feedback)
 

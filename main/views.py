@@ -23,8 +23,8 @@ class PermissionMixin:
 
 
 class PostViewSet(PermissionMixin, ModelViewSet):
-    queryset = Post.objects.all()
-    serializer_class = PostSerializer
+    queryset = Project.objects.all()
+    serializer_class = ProjectSerializer
 
 
     def get_serializer_context(self):
@@ -34,7 +34,7 @@ class PostViewSet(PermissionMixin, ModelViewSet):
 
 
 class ReplyViewSet(PermissionMixin, ModelViewSet):
-    queryset = Reply.objects.all()
+    queryset = Feedback.objects.all()
     serializer_class = ReplySerializer
 
     def get_serializer_context(self):
@@ -43,15 +43,15 @@ class ReplyViewSet(PermissionMixin, ModelViewSet):
         return context
 
 
-class StarView(PermissionMixin, APIView):
-
-    def post(self, request):
-        data = request.data
-        serializer = StarSerializer(data=data)
-        if serializer.is_valid(raise_exception=True):
-            serializer.save()
-            return Response("add star", status=status.HTTP_200_OK)
-
+# class StarView(PermissionMixin, APIView):
+#
+#     def post(self, request):
+#         data = request.data
+#         serializer = StarSerializer(data=data)
+#         if serializer.is_valid(raise_exception=True):
+#             serializer.save()
+#             return Response("add star", status=status.HTTP_200_OK)
+#
 
 
 
