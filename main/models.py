@@ -30,15 +30,6 @@ class CodeImage(models.Model):
     post = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='images')
 
 
-class Bids(models.Model):
-    id_user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='proposals')
-    id_project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='proposals')
-    amount = models.PositiveIntegerField()
-    message = models.TextField()
-    status = models.BooleanField(default=False)
-    term = models.DateTimeField(null=False)
-
-
 class Order(models.Model):
     id_user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='orders')
     id_project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='orders')
@@ -62,8 +53,7 @@ class Feedback(models.Model):
         ordering = ('-created',)
 
 
-class Bid(models.Model):
-    id = models.ForeignKey(Bids, primary_key=True, on_delete=models.CASCADE, related_name='bids')
+class Bids(models.Model):
     freelancer_id = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='bids')
     project_id = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='bids')
     amount = models.PositiveIntegerField()

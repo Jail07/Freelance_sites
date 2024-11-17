@@ -4,10 +4,12 @@ from django.db import models
 from django.utils.crypto import get_random_string
 from main import *
 
+
 class Role(models.Model):
     id = models.AutoField(primary_key=True)
     freelancer = models.IntegerField(default=0)
     employer = models.IntegerField(default=0)
+
 
 class CustomUserManager(BaseUserManager):
     use_in_migrations = True
@@ -39,7 +41,7 @@ class CustomUserManager(BaseUserManager):
 class CustomUser(AbstractUser):
     name = models.CharField(max_length=120)
     surname = models.CharField(max_length=120)
-    role = models.ManyToManyField(Role)
+    role = models.ForeignKey(Role, on_delete=models.CASCADE)
     phone = models.CharField(max_length=120)
     email = models.EmailField(unique=True)
     reg_date = models.DateTimeField(auto_now_add=True)
@@ -69,5 +71,3 @@ class Profile(models.Model):
 
     def __str__(self):
         return self.bio
-
-
