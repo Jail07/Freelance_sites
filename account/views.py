@@ -37,10 +37,23 @@ class LoginView(ObtainAuthToken):
     serializer_class = LoginSerializer
 
 
-class LogoutVew(APIView):
+class LogoutView(APIView):
     permission_classes = [IsAuthenticated, ]
 
     def post(self, request):
         user = request.user
         Token.objects.filter(user=user)
         return Response('Successfully logged out', status=status.HTTP_200_OK)
+
+
+class ProfileView(APIView):
+    permission_classes = [IsAuthenticated, ]
+
+    def get(self, request):
+        user = request.user
+
+
+    def post(self, request, *args, **kwargs):
+        data = request.data
+        # serializer = ProfileSerializer.create(data)
+

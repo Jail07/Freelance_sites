@@ -9,13 +9,14 @@ def send_activation_code(email, activation_code):
         'email': email,
         'domain': 'http://localhost:8000',
         'activation_code': activation_code,
+        'Link': f'http://localhost:8000/{email}/{activation_code}',
     }
     msg_html = render_to_string('email.html', context)
     message = strip_tags(msg_html)
     send_mail(
         'Activate you account',
         message,
-        'admin@gmail.com',
+        'anonimxx888@gmail.com',
         [email, ],
         html_message=msg_html,
         fail_silently=False

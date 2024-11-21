@@ -15,6 +15,7 @@ class CustomUserManager(BaseUserManager):
     use_in_migrations = True
 
     def create_user(self, email, password, **extra_fields):
+        print("13123213123", **extra_fields)
         if not email:
             raise ValueError('The given email must be set')
 
@@ -39,10 +40,7 @@ class CustomUserManager(BaseUserManager):
 
 
 class CustomUser(AbstractUser):
-    name = models.CharField(max_length=120)
-    surname = models.CharField(max_length=120)
-    role = models.ForeignKey(Role, on_delete=models.CASCADE)
-    phone = models.CharField(max_length=120)
+    username = None
     email = models.EmailField(unique=True)
     reg_date = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=False)
@@ -56,6 +54,8 @@ class CustomUser(AbstractUser):
     def create_activation_code(self):
         code = get_random_string(length=25, allowed_chars='abcdefghijklmnopqrstuvwxyz1234567890!@#$%&')
         self.activation_code = code
+        print(self.activation_code)
+        return self.activation_code
 
     def __str__(self):
         return self.email
@@ -63,6 +63,11 @@ class CustomUser(AbstractUser):
 
 class Profile(models.Model):
     id_user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+    name = models.CharField(max_length=120)
+    surname = models.CharField(max_length=120)
+    birthdate = models.DateField()
+    role = models.ForeignKey(Role, on_delete=models.CASCADE)
+    phone = models.CharField(max_length=20)
     bio = models.TextField()
     location = models.TextField()
     skills = models.TextField()

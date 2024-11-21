@@ -21,6 +21,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         return validated_data
 
     def create(self, attrs):
+        print(attrs, "djshakjshksjadh")
         user = CustomUser.objects.create_user(**attrs)
         send_activation_code(user.email, user.activation_code)
         return user
@@ -50,4 +51,8 @@ class LoginSerializer(serializers.Serializer):
         attrs['user'] = user
         return attrs
 
+class ProfileSerializer(serializers.ModelSerializer):
 
+    class Meta:
+        model = Profile
+        fields = {'name', 'surname', 'birthdate', 'phone', 'bio', 'location', 'skills', 'photo'}
