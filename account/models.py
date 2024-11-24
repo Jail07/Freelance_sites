@@ -1,78 +1,58 @@
-from django.contrib.auth.base_user import BaseUserManager
-from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.utils.crypto import get_random_string
-from main import *
-
-
-class Role(models.Model):
-    id = models.AutoField(primary_key=True)
-    freelancer = models.IntegerField(default=0)
-    employer = models.IntegerField(default=0)
-
-
-class CustomUserManager(BaseUserManager):
-    use_in_migrations = True
-
-    def create_user(self, email, password, **extra_fields):
-        print("13123213123", **extra_fields)
-        if not email:
-            raise ValueError('The given email must be set')
-
-        email = self.normalize_email(email)
-        user = self.model(email=email, **extra_fields)
-        user.set_password(password)
-        user.create_activation_code()
-        user.save(using=self._db)
-        return user
-
-    def create_superuser(self, email, password=None, **extra_fields):
-        if not email:
-            raise ValueError('Email not provided')
-        email = self.normalize_email(email)
-        user = self.model(email=email)
-        user.set_password(password)
-        user.is_active = True
-        user.is_staff = True
-        user.is_superuser = True
-        user.save(using=self._db)
-        return user
-
-
-class CustomUser(AbstractUser):
-    username = None
-    email = models.EmailField(unique=True)
-    reg_date = models.DateTimeField(auto_now_add=True)
-    is_active = models.BooleanField(default=False)
-    activation_code = models.CharField(max_length=25, blank=True)
-
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = []
-
-    objects = CustomUserManager()
-
-    def create_activation_code(self):
-        code = get_random_string(length=25, allowed_chars='abcdefghijklmnopqrstuvwxyz1234567890!@#$%&')
-        self.activation_code = code
-        print(self.activation_code)
-        return self.activation_code
-
-    def __str__(self):
-        return self.email
+from django.contrib.auth.models import User
+import uuid
 
 
 class Profile(models.Model):
-    id_user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
-    name = models.CharField(max_length=120)
-    surname = models.CharField(max_length=120)
-    birthdate = models.DateField()
-    role = models.ForeignKey(Role, on_delete=models.CASCADE)
-    phone = models.CharField(max_length=20)
-    bio = models.TextField()
-    location = models.TextField()
-    skills = models.TextField()
-    rating = models.IntegerField(default=0)
-    photo = models.ImageField(upload_to='profile_pics')
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=200, blank=True, null=True)
+    email = models.EmailField(max_length=500, blank=True, null=True)
+    username = models.CharField(max_length=200, blank=True, null=True)
+    location = models.CharField(max_length=200, blank=True, null=True)
+    bio = models.TextField(blank=True, null=True)
+    profile_image = models.ImageField(null=True, blank=True, upload_to='images/profiles/')
+    created = models.DateTimeField(auto_now_add=True)
+    id = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False)
 
     def __str__(self):
-        return self.bio
+        return str(self.username)
+
+    class Meta:
+        ordering = ['created']
+
+    @property
+    def imageURL(self):
+        try:
+            url = self.profile_image.url
+        except:
+            url = './media/profiles/user-default.png'
+        return url
+
+
+class Skill(models.Model):
+    owner = models.ForeignKey(Profile, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=200, blank=True, null=True)
+    description = models.TextField(null=True, blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    id = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False)
+
+    def __str__(self):
+        return str(self.name)
+
+
+class Message(models.Model):
+    sender = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True, blank=True)
+    recipient = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True, blank=True, related_name="messages")
+    name = models.CharField(max_length=200, null=True, blank=True)
+    email = models.EmailField(max_length=200, null=True, blank=True)
+    subject = models.CharField(max_length=200, null=True, blank=True)
+    body = models.TextField()
+    is_read = models.BooleanField(default=False, null=True)
+    created = models.DateTimeField(auto_now_add=True)
+    id = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False)
+
+    def __str__(self):
+        return self.subject
+
+    class Meta:
+        ordering = ['is_read', '-created']

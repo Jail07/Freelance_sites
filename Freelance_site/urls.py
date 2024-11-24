@@ -1,7 +1,7 @@
-"""blog URL Configuration
+"""Freelance_site URL Configuration
 
 The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/3.1/topics/http/urls/
+    https://docs.djangoproject.com/en/4.1/topics/http/urls/
 Examples:
 Function views
     1. Add an import:  from my_app import views
@@ -13,46 +13,28 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.conf import settings
-from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
-from rest_framework.routers import DefaultRouter
 
-from rest_framework import permissions
-from drf_yasg.views import get_schema_view
-from drf_yasg import openapi
+from django.conf import settings
+from django.conf.urls.static import static
 
-from main.views import *
-
-schema_view = get_schema_view(
-   openapi.Info(
-      title="Chernorabochiy",
-      default_version='v1',
-      description="Hello Men",
-      terms_of_service="https://www.google.com/policies/terms/",
-      contact=openapi.Contact(email="contact@snippets.local"),
-      license=openapi.License(name="BSD License"),
-   ),
-   public=True,
-   permission_classes=(permissions.AllowAny,),
-)
-
-router = DefaultRouter()
-router.register('posts', PostViewSet)
-router.register('replies', ReplyViewSet)
+from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/v1/docs/', schema_view.with_ui()),
-    path('api/v1/', include(router.urls)),
-    path('api/v1/', include('account.urls')),
-    path('api/v1/', include('main.urls')),
+    path('main/', include('main.urls')),
+    path('', include('account.urls')),
+
+    path('reset_password/', auth_views.PasswordResetView.as_view(template_name="reset_password.html"), name="reset_password"),
+    path('reset_password_sent/', auth_views.PasswordResetDoneView.as_view(template_name="reset_password_sent.html"), name="password_reset_done"),
+    path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(template_name="reset.html"), name="password_reset_confirm"),
+    path('reset_password_complete/', auth_views.PasswordResetCompleteView.as_view(template_name="reset_password_complete.html"), name="password_reset_complete"),
 
 ]
 
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
-
-
-
+# 1 - User submits email for reset              //PasswordResetView.as_view()           //name="reset_password"
+# 2 - Email sent message                        //PasswordResetDoneView.as_view()        //name="passsword_reset_done"
+# 3 - Email with link and reset instructions    //PasswordResetConfirmView()            //name="password_reset_confirm"
+# 4 - Password successfully reset message       //PasswordResetCompleteView.as_view()   //name="password_reset_complete"

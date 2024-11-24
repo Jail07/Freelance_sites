@@ -1,11 +1,13 @@
-Django==3.1
+Django
 psycopg2-binary
 Pillow
-djangorestframework==3.11.0
+djangorestframework==3.14.0
 python-decouple==3.4
-djangorestframework_simplejwt==4.7.2
+djangorestframework_simplejwt==5.2.2
 drf-yasg==1.20.0
 PyJWT==2.9.0
 sqlparse==0.5.1
 tzdata==2024.2
 asgiref==3.8.1
+django-cors-headers
+sorl-thumbnail
