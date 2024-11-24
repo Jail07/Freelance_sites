@@ -1,31 +1,26 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from . import views
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
-
+# Регистрация маршрутов для ViewSet'ов
+router = DefaultRouter()
+router.register('profiles', views.ProfileViewSet, basename='profiles')
+router.register('skills', views.SkillViewSet, basename='skills')
+router.register('messages', views.MessageViewSet, basename='messages')
 
 urlpatterns = [
+    # JWT токены
     path('api/account/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/account/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
-    path('login/', views.LoginUserView.as_view(), name="login"),
-    path('logout/', views.LogoutUserView.as_view(), name="logout"),
-    path('register/', views.RegisterUserView.as_view(), name="register"),
-    
-    path('', views.profiles, name="profiles"),
-    path('profile/<str:pk>/', views.ProfileDetailView.as_view(), name="profile-detail"),
-    path('account/', views.UserAccountView.as_view(), name="account"),
+    # Аутентификация и регистрация
+    path('api/account/login/', views.login_user, name="api-login"),
+    path('api/account/register/', views.RegisterUserView.as_view(), name="api-register"),
 
-    path('edit-account/', views.EditAccountView.as_view(), name="edit-account"),
+    # Подключение маршрутов ViewSet'ов
+    path('api/', include(router.urls)),
 
-    path('create-skill/', views.createSkill, name="create-skill"),
-    path('update-skill/<str:pk>/', views.updateSkill, name="update-skill"),
-    path('delete-skill/<str:pk>/', views.deleteSkill, name="delete-skill"),
-
-    path('inbox/', views.inbox, name="inbox"),
-    path('message/<str:pk>/', views.viewMessage, name="message"),
-    path('create-message/<str:pk>/', views.createMessage, name="create-message"),
+    # Дополнительные маршруты
+    path('api/routes/', views.get_routes, name="api-routes"),
 ]

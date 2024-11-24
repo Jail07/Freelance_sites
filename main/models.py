@@ -26,7 +26,7 @@ class Project(models.Model):
     def imageURL(self):
         try:
             url = self.featured_image.url
-        except:
+        except AttributeError:
             url = './media/main/default.jpg'
         return url
 
@@ -35,17 +35,29 @@ class Project(models.Model):
         queryset = self.review_set.all().values_list('owner__id', flat=True)
         return queryset
 
+    def update_vote_count(self):
+        """
+        Обновляет рейтинг проекта, подсчитывая голоса.
+        """
+        reviews = self.review_set.all()
+        up_votes = reviews.filter(value='up').count()
+        total_votes = reviews.count()
+
+        if total_votes > 0:
+            ratio = (up_votes / total_votes) * 100
+        else:
+            ratio = 0
+
+        self.vote_total = total_votes
+        self.vote_ratio = ratio
+        self.save()
+
     @property
     def getVoteCount(self):
-        reviews = self.review_set.all()
-        upVotes = reviews.filter(value='up').count()
-        totalVotes = reviews.count()
-
-        ratio = (upVotes / totalVotes) * 100
-        self.vote_total = totalVotes
-        self.vote_ratio = ratio
-
-        self.save()
+        """
+        Возвращает количество голосов и рейтинг проекта.
+        """
+        return {'total_votes': self.vote_total, 'vote_ratio': self.vote_ratio}
 
 
 class Review(models.Model):
@@ -64,7 +76,7 @@ class Review(models.Model):
         unique_together = [['owner', 'project']]
 
     def __str__(self):
-        return self.value
+        return f'{self.owner} voted {self.value}'
 
 
 class Tag(models.Model):

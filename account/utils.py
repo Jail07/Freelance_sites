@@ -1,47 +1,26 @@
 from django.db.models import Q
+from rest_framework.pagination import PageNumberPagination
 from .models import Profile, Skill
-from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 
+# Пагинация для API
+class ProfilePagination(PageNumberPagination):
+    page_size = 10  # Количество элементов на странице
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
-def paginateProfiles(request, profiles, results):
-    page = request.GET.get('page')
-    paginator = Paginator(profiles, results)
-
-    try:
-        profiles = paginator.page(page)
-    except PageNotAnInteger:
-        page = 1
-        profiles = paginator.page(page)
-    except EmptyPage:
-        page = paginator.num_pages
-        profiles = paginator.page(page)
-
-    leftIndex = (int(page) - 4)
-
-    if leftIndex < 1:
-        leftIndex = 1
-
-    rightIndex = (int(page) + 5)
-
-    if rightIndex > paginator.num_pages:
-        rightIndex = paginator.num_pages + 1
-
-    custom_range = range(leftIndex, rightIndex)
-
-    return custom_range, profiles
-
-
-def searchProfiles(request):
-    search_query = ''
-
-    if request.GET.get('search_query'):
-        search_query = request.GET.get('search_query')
+# Поиск профилей
+def search_profiles(search_query=None):
+    """
+    Функция для поиска профилей по имени или навыкам.
+    :param search_query: Строка поиска (может быть None).
+    :return: Queryset профилей.
+    """
+    if not search_query:
+        return Profile.objects.all()
 
     skills = Skill.objects.filter(name__icontains=search_query)
-
     profiles = Profile.objects.distinct().filter(
         Q(name__icontains=search_query) |
         Q(skill__in=skills)
     )
-
-    return profiles, search_query
+    return profiles

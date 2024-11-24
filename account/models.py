@@ -10,28 +10,31 @@ class Profile(models.Model):
     username = models.CharField(max_length=200, blank=True, null=True)
     location = models.CharField(max_length=200, blank=True, null=True)
     bio = models.TextField(blank=True, null=True)
-    profile_image = models.ImageField(null=True, blank=True, upload_to='images/profiles/')
+    profile_image = models.ImageField(
+        null=True,
+        blank=True,
+        upload_to="images/profiles/",
+        default="images/profiles/user-default.png",
+    )
     created = models.DateTimeField(auto_now_add=True)
     id = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False)
 
     def __str__(self):
-        return str(self.username)
+        return str(self.username or "Unnamed User")
 
     class Meta:
-        ordering = ['created']
+        ordering = ["-created"]
 
     @property
     def imageURL(self):
-        try:
-            url = self.profile_image.url
-        except:
-            url = './media/profiles/user-default.png'
-        return url
+        if self.profile_image and hasattr(self.profile_image, "url"):
+            return self.profile_image.url
+        return "images/profiles/user-default.png"
 
 
 class Skill(models.Model):
-    owner = models.ForeignKey(Profile, on_delete=models.CASCADE, null=True, blank=True)
-    name = models.CharField(max_length=200, blank=True, null=True)
+    owner = models.ForeignKey(Profile, on_delete=models.CASCADE, null=True, blank=True, related_name="skills")
+    name = models.CharField(max_length=200, blank=False, null=False, db_index=True)
     description = models.TextField(null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True)
     id = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False)
@@ -47,12 +50,12 @@ class Message(models.Model):
     email = models.EmailField(max_length=200, null=True, blank=True)
     subject = models.CharField(max_length=200, null=True, blank=True)
     body = models.TextField()
-    is_read = models.BooleanField(default=False, null=True)
+    is_read = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)
     id = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False)
 
     def __str__(self):
-        return self.subject
+        return self.subject or "No Subject"
 
     class Meta:
-        ordering = ['is_read', '-created']
+        ordering = ["is_read", "-created"]

@@ -1,32 +1,33 @@
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from .models import Project, Tag
-from .forms import ProjectForm, ReviewForm
-from .utils import searchProjects, paginateProjects
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from .serializers import ProjectSerializer
-from main.models import Project, Review, Tag
+from .models import Project, Review, Tag
+from .serializers import ProjectSerializer, ReviewSerializer
+from django.http import JsonResponse
 
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 
 @api_view(['GET'])
 def getRoutes(request):
-
+    """
+    Функция для получения всех доступных API маршрутов.
+    """
     routes = [
-        {'GET': '/api/main'},
-        {'GET': '/api/main/id'},
-        {'POST': '/api/main/id/vote'},
+        {'GET': '/api/main/'},  # Получить все проекты
+        {'GET': '/api/main/id'},  # Получить конкретный проект по id
+        {'POST': '/api/main/id/vote'},  # Отдать голос за проект
 
-        {'POST': '/api/account/token'},
-        {'POST': '/api/account/token/refresh'},
+        {'POST': '/api/account/token'},  # Получить токен пользователя
+        {'POST': '/api/account/token/refresh'},  # Обновить токен
     ]
     return Response(routes)
 
-
 @api_view(['GET'])
 def getProjects(request):
+    """
+    Получить список всех проектов.
+    """
     projects = Project.objects.all()
     serializer = ProjectSerializer(projects, many=True)
     return Response(serializer.data)
@@ -34,7 +35,14 @@ def getProjects(request):
 
 @api_view(['GET'])
 def getProject(request, pk):
-    project = Project.objects.get(id=pk)
+    """
+    Получить данные о конкретном проекте по ID.
+    """
+    try:
+        project = Project.objects.get(id=pk)
+    except Project.DoesNotExist:
+        return Response({"detail": "Project not found."}, status=404)
+
     serializer = ProjectSerializer(project, many=False)
     return Response(serializer.data)
 
@@ -42,7 +50,14 @@ def getProject(request, pk):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def projectVote(request, pk):
-    project = Project.objects.get(id=pk)
+    """
+    Голосование за проект.
+    """
+    try:
+        project = Project.objects.get(id=pk)
+    except Project.DoesNotExist:
+        return Response({"detail": "Project not found."}, status=404)
+
     user = request.user.profile
     data = request.data
 
@@ -51,104 +66,104 @@ def projectVote(request, pk):
         project=project,
     )
 
-    review.value = data['value']
+    review.value = data['value']  # "up" or "down"
     review.save()
-    project.getVoteCount
 
-    serializer = ProjectSerializer(project, many=False)
-    return Response(serializer.data)
+    project.getVoteCount  # Обновление подсчета голосов
+    return Response({"detail": "Vote recorded successfully!"})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def createProject(request):
+    """
+    Создать новый проект.
+    """
+    data = request.data
+
+    owner = request.user.profile
+    title = data.get('title')
+    description = data.get('description')
+    demo_link = data.get('demo_link')
+    source_link = data.get('source_link')
+    tags = data.get('tags', [])
+
+    project = Project.objects.create(
+        owner=owner,
+        title=title,
+        description=description,
+        demo_link=demo_link,
+        source_link=source_link,
+    )
+
+    # Привязка тегов к проекту
+    for tag_name in tags:
+        tag, created = Tag.objects.get_or_create(name=tag_name)
+        project.tags.add(tag)
+
+    project.save()
+
+    return Response({"detail": "Project created successfully!"})
+
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def updateProject(request, pk):
+    """
+    Обновить проект.
+    """
+    try:
+        project = Project.objects.get(id=pk)
+    except Project.DoesNotExist:
+        return Response({"detail": "Project not found."}, status=404)
+
+    data = request.data
+
+    project.title = data.get('title', project.title)
+    project.description = data.get('description', project.description)
+    project.demo_link = data.get('demo_link', project.demo_link)
+    project.source_link = data.get('source_link', project.source_link)
+    project.save()
+
+    tags = data.get('tags', [])
+    for tag_name in tags:
+        tag, created = Tag.objects.get_or_create(name=tag_name)
+        project.tags.add(tag)
+
+    project.save()
+
+    return Response({"detail": "Project updated successfully!"})
 
 
 @api_view(['DELETE'])
-def removeTag(request):
-    tagId = request.data['tag']
-    projectId = request.data['project']
+@permission_classes([IsAuthenticated])
+def deleteProject(request, pk):
+    """
+    Удалить проект.
+    """
+    try:
+        project = Project.objects.get(id=pk)
+    except Project.DoesNotExist:
+        return Response({"detail": "Project not found."}, status=404)
 
-    project = Project.objects.get(id=projectId)
-    tag = Tag.objects.get(id=tagId)
+    project.delete()
+    return Response({"detail": "Project deleted successfully!"})
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def removeTag(request):
+    """
+    Удалить тег из проекта.
+    """
+    tag_id = request.data['tag']
+    project_id = request.data['project']
+
+    try:
+        project = Project.objects.get(id=project_id)
+        tag = Tag.objects.get(id=tag_id)
+    except (Project.DoesNotExist, Tag.DoesNotExist):
+        return Response({"detail": "Project or Tag not found."}, status=404)
 
     project.tags.remove(tag)
-
-    return Response('Tag was deleted!')
-
-
-def projects(request):
-    projects, search_query = searchProjects(request)
-    custom_range, projects = paginateProjects(request, projects, 6)
-
-    context = {'main': projects, 'search_query': search_query, 'custom_range': custom_range}
-    return render(request, 'main/main.html', context)
-
-
-def project(request, pk):
-    projectObj = Project.objects.get(id=pk)
-    form = ReviewForm()
-
-    if request.method == 'POST':
-        form = ReviewForm(request.POST)
-        review = form.save(commit=False)
-        review.project = projectObj
-        review.owner = request.user.profile
-        review.save()
-
-        projectObj.getVoteCount
-
-        messages.success(request, 'Your review was successfully submitted!')
-        return redirect('project', pk=projectObj.id)
-
-    return render(request, 'main/single_project.html', {'project': projectObj, 'form': form})
-
-
-@login_required(login_url="login")
-def createProject(request):
-    profile = request.user.profile
-    form = ProjectForm()
-
-    if request.method == 'POST':
-        newtags = request.POST.get('newtags').replace(',',  " ").split()
-        form = ProjectForm(request.POST, request.FILES)
-        if form.is_valid():
-            project = form.save(commit=False)
-            project.owner = profile
-            project.save()
-
-            for tag in newtags:
-                tag, created = Tag.objects.get_or_create(name=tag)
-                project.tags.add(tag)
-            return redirect('account')
-
-    context = {'form': form}
-    return render(request, "main/project_form.html", context)
-
-
-@login_required(login_url="login")
-def updateProject(request, pk):
-    profile = request.user.profile
-    project = profile.project_set.get(id=pk)
-    form = ProjectForm(instance=project)
-
-    if request.method == 'POST':
-        newtags = request.POST.get('newtags').replace(',',  " ").split()
-
-        form = ProjectForm(request.POST, request.FILES, instance=project)
-        if form.is_valid():
-            project = form.save()
-            for tag in newtags:
-                tag, created = Tag.objects.get_or_create(name=tag)
-                project.tags.add(tag)
-
-            return redirect('account')
-
-    context = {'form': form, 'project': project}
-    return render(request, "main/project_form.html", context)
-
-
-@login_required(login_url="login")
-def deleteProject(request, pk):
-    profile = request.user.profile
-    project = profile.project_set.get(id=pk)
-    if request.method == 'POST':
-        project.delete()
-        return redirect('account')
-    context = {'object': project}
-    return render(request, 'delete_template.html', context)
+    return Response({"detail": "Tag removed from project."})

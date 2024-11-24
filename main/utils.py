@@ -4,7 +4,9 @@ from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 
 
 def paginateProjects(request, projects, results):
-
+    """
+    Функция для пагинации проектов
+    """
     page = request.GET.get('page')
     paginator = Paginator(projects, results)
 
@@ -18,12 +20,10 @@ def paginateProjects(request, projects, results):
         projects = paginator.page(page)
 
     leftIndex = (int(page) - 4)
-
     if leftIndex < 1:
         leftIndex = 1
 
     rightIndex = (int(page) + 5)
-
     if rightIndex > paginator.num_pages:
         rightIndex = paginator.num_pages + 1
 
@@ -33,17 +33,20 @@ def paginateProjects(request, projects, results):
 
 
 def searchProjects(request):
-    search_query = ''
+    """
+    Функция для поиска проектов по различным полям
+    """
+    search_query = request.GET.get('search_query', '')  # Применяем дефолтное значение, если запрос пуст
 
-    if request.GET.get('search_query'):
-        search_query = request.GET.get('search_query')
-
+    # Фильтрация тегов по запросу
     tags = Tag.objects.filter(name__icontains=search_query)
 
+    # Поиск по проектам с использованием нескольких полей (заголовок, описание, имя владельца, теги)
     projects = Project.objects.distinct().filter(
         Q(title__icontains=search_query) |
         Q(description__icontains=search_query) |
         Q(owner__name__icontains=search_query) |
         Q(tags__in=tags)
     )
+
     return projects, search_query
