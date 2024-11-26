@@ -2,12 +2,12 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 
 from django.contrib.auth import get_user_model, authenticate
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, AnonymousUser
 from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -40,6 +40,7 @@ def login_user(request):
 
 # Регистрация пользователя
 class RegisterUserView(APIView):
+    permission_classes = [AllowAny]
     def post(self, request):
         serializer = RegistrationSerializer(data=request.data)
         if serializer.is_valid():
@@ -65,6 +66,8 @@ class ProfileViewSet(ModelViewSet):
         выполняется поиск по имени или навыкам.
         """
         search_query = self.request.query_params.get('search', None)
+        if getattr(self, 'swagger_fake_view', False) or isinstance(self.request.user, AnonymousUser):
+            return Profile.objects.none()
         if search_query:
             return search_profiles(search_query).filter(user=self.request.user)
         return Profile.objects.filter(user=self.request.user)
@@ -84,6 +87,8 @@ class SkillViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False) or isinstance(self.request.user, AnonymousUser):
+            return Profile.objects.none()
         return Skill.objects.filter(owner=self.request.user.profile)
 
     def perform_create(self, serializer):
@@ -96,6 +101,8 @@ class MessageViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False) or isinstance(self.request.user, AnonymousUser):
+            return Profile.objects.none()
         return Message.objects.filter(recipient=self.request.user.profile)
 
     def perform_create(self, serializer):
