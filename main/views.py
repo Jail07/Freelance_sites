@@ -1,6 +1,7 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from .utils import paginateProjects, searchProjects
 from .models import Project, Review, Tag
 from .serializers import ProjectSerializer, ReviewSerializer
 from django.http import JsonResponse
@@ -17,9 +18,6 @@ def getRoutes(request):
         {'GET': '/api/main/'},  # Получить все проекты
         {'GET': '/api/main/id'},  # Получить конкретный проект по id
         {'POST': '/api/main/id/vote'},  # Отдать голос за проект
-
-        {'POST': '/api/account/token'},  # Получить токен пользователя
-        {'POST': '/api/account/token/refresh'},  # Обновить токен
     ]
     return Response(routes)
 
@@ -30,6 +28,8 @@ def getProjects(request):
     """
     projects = Project.objects.all()
     serializer = ProjectSerializer(projects, many=True)
+    # pagination_class = paginateProjects()
+
     return Response(serializer.data)
 
 
@@ -60,6 +60,7 @@ def projectVote(request, pk):
 
     user = request.user.profile
     data = request.data
+    print(data)
 
     review, created = Review.objects.get_or_create(
         owner=user,
@@ -67,6 +68,7 @@ def projectVote(request, pk):
     )
 
     review.value = data['value']  # "up" or "down"
+    review.body = data['body']
     review.save()
 
     project.getVoteCount  # Обновление подсчета голосов
@@ -80,30 +82,28 @@ def createProject(request):
     Создать новый проект.
     """
     data = request.data
+    try:
+        owner = request.user.profile
+        title = data.get('title')
+        description = data.get('description')
+        tags = data.get('tags', [])
 
-    owner = request.user.profile
-    title = data.get('title')
-    description = data.get('description')
-    demo_link = data.get('demo_link')
-    source_link = data.get('source_link')
-    tags = data.get('tags', [])
+        project = Project.objects.create(
+            owner=owner,
+            title=title,
+            description=description,
+        )
 
-    project = Project.objects.create(
-        owner=owner,
-        title=title,
-        description=description,
-        demo_link=demo_link,
-        source_link=source_link,
-    )
+        # Привязка тегов к проекту
+        for tag_name in tags:
+            tag, created = Tag.objects.get_or_create(name=tag_name)
+            project.tags.add(tag)
 
-    # Привязка тегов к проекту
-    for tag_name in tags:
-        tag, created = Tag.objects.get_or_create(name=tag_name)
-        project.tags.add(tag)
+        project.save()
+        return Response({"detail": "Project created successfully!"})
 
-    project.save()
-
-    return Response({"detail": "Project created successfully!"})
+    except Exception as e:
+        return Response({"detail": f"Didn't give a data or... \n{e}"})
 
 
 @api_view(['PUT'])

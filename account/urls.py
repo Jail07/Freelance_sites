@@ -5,9 +5,10 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 # Регистрация маршрутов для ViewSet'ов
 router = DefaultRouter()
+router.register('messages', views.MessageViewSet, basename='messages')
 router.register('profiles', views.ProfileViewSet, basename='profiles')
 router.register('skills', views.SkillViewSet, basename='skills')
-router.register('messages', views.MessageViewSet, basename='messages')
+
 
 urlpatterns = [
     # JWT токены

@@ -3,8 +3,8 @@ from rest_framework.pagination import PageNumberPagination
 from .models import Profile, Skill
 
 # Пагинация для API
-class ProfilePagination(PageNumberPagination):
-    page_size = 10  # Количество элементов на странице
+class Pagination(PageNumberPagination):
+    page_size = 2  # Количество элементов на странице
     page_size_query_param = 'page_size'
     max_page_size = 100
 

@@ -3,6 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -11,7 +12,7 @@ from django.contrib.auth.models import User, AnonymousUser
 from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .utils import ProfilePagination, search_profiles
+from .utils import Pagination, search_profiles
 
 from .models import Profile, Skill, Message
 from .serializers import (
@@ -58,9 +59,9 @@ class RegisterUserView(APIView):
 class ProfileViewSet(ModelViewSet):
     serializer_class = ProfileSerializer
     permission_classes = [IsAuthenticated]
-    pagination_class = ProfilePagination
+    pagination_class = Pagination
 
-    def get_queryset(self):
+    def get_queryset(self, pk=None):
         """
         Возвращает профили текущего пользователя. Если параметр `search` передан,
         выполняется поиск по имени или навыкам.
@@ -70,7 +71,7 @@ class ProfileViewSet(ModelViewSet):
             return Profile.objects.none()
         if search_query:
             return search_profiles(search_query).filter(user=self.request.user)
-        return Profile.objects.filter(user=self.request.user)
+        return Profile.objects.all()
 
     def perform_create(self, serializer):
         """
@@ -81,10 +82,22 @@ class ProfileViewSet(ModelViewSet):
             raise ValidationError("Профиль для данного пользователя уже существует.")
         serializer.save(user=self.request.user)
 
+    @action(detail=False, methods=['get'], url_path='my-profile')
+    def my_profile(self, request):
+        """
+        Возвращает профиль текущего пользователя.
+        """
+        profile = Profile.objects.filter(user=request.user).first()
+        if not profile:
+            return Response({"detail": "Profile not found."}, status=404)
+        serializer = self.get_serializer(profile)
+        return Response(serializer.data)
+
 # Навыки
 class SkillViewSet(ModelViewSet):
     serializer_class = SkillSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = Pagination
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False) or isinstance(self.request.user, AnonymousUser):
@@ -99,15 +112,27 @@ class SkillViewSet(ModelViewSet):
 class MessageViewSet(ModelViewSet):
     serializer_class = MessageSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = Pagination
+
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False) or isinstance(self.request.user, AnonymousUser):
             return Profile.objects.none()
-        return Message.objects.filter(recipient=self.request.user.profile)
+        user = self.request.user.profile
+        return Message.objects.filter(sender=user) | Message.objects.filter(recipient=user)
 
     def perform_create(self, serializer):
         sender = self.request.user.profile if self.request.user.is_authenticated else None
-        serializer.save(sender=sender)
+        recipient_username = self.request.data.get('recipient')  # Получаем username из данных запроса
+
+        try:
+            # Ищем профиль получателя по username
+            recipient = Profile.objects.get(username=recipient_username)
+        except Profile.DoesNotExist:
+            raise ValidationError({'recipient': 'Recipient not found.'})
+
+        # Сохраняем сообщение с отправителем и получателем
+        serializer.save(sender=sender, recipient=recipient)
 
 # API маршруты
 @api_view(['GET'])
