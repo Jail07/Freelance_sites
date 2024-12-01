@@ -7,7 +7,6 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['username', 'email']
 
-# SkillSerializer для управления навыками
 class SkillSerializer(serializers.ModelSerializer):
     class Meta:
         model = Skill
@@ -15,18 +14,17 @@ class SkillSerializer(serializers.ModelSerializer):
 
 
 class ProfileSerializer(serializers.ModelSerializer):
-    user = UserSerializer(required=False)  # Используем вложенный сериализатор User
-    skills = SkillSerializer(many=True, read_only=True, source='skill_set')  # Вложенные навыки
+    user = UserSerializer(required=False)
+    skills = SkillSerializer(many=True, read_only=True, source='skill_set')
 
 
     class Meta:
         model = Profile
-        fields = ['id', 'user', 'name', 'email', 'username', 'location', 'bio', 'profile_image', 'skills', 'created']  # Или укажите поля явно, если нужно
+        fields = ['id', 'user', 'name', 'email', 'username', 'location', 'bio', 'profile_image', 'skills', 'created']
         read_only_fields = ['id']
 
     def create(self, validated_data):
-        # Если нужно создать профиль
-        user_data = validated_data.pop('user', None)  # Извлекаем данные пользователя (если передаются)
+        user_data = validated_data.pop('user', None)
         if user_data:
             user = User.objects.create(**user_data)
             profile = Profile.objects.create(user=user, **validated_data)
@@ -35,7 +33,6 @@ class ProfileSerializer(serializers.ModelSerializer):
         return profile
 
     def update(self, instance, validated_data):
-        # Обновляем профиль и вложенные данные пользователя
         user_data = validated_data.pop('user', None)
         if user_data:
             for attr, value in user_data.items():
@@ -49,7 +46,6 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 
 
-# MessageSerializer для работы с сообщениями
 class MessageSerializer(serializers.ModelSerializer):
     sender = UserSerializer(read_only=True)
     recipient = UserSerializer(read_only=True)

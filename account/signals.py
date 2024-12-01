@@ -8,7 +8,6 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 import threading
 
-# Асинхронная отправка писем
 class EmailThread(threading.Thread):
     def __init__(self, email):
         self.email = email
@@ -17,7 +16,6 @@ class EmailThread(threading.Thread):
     def run(self):
         self.email.send()
 
-# Создание профиля при создании пользователя
 @receiver(post_save, sender=User)
 def createProfile(sender, instance, created, **kwargs):
     if created:
@@ -28,7 +26,6 @@ def createProfile(sender, instance, created, **kwargs):
             name=instance.first_name,
         )
 
-        # Отправка приветственного письма
         context = {
             "title": "Thank you",
             "content": "We are glad you are here!",
@@ -44,9 +41,8 @@ def createProfile(sender, instance, created, **kwargs):
             reply_to=[settings.EMAIL_HOST_USER],
         )
         email.attach_alternative(html_content, "text/html")
-        EmailThread(email).start()  # Асинхронная отправка
+        EmailThread(email).start()
 
-# Обновление пользователя при изменении профиля
 @receiver(post_save, sender=Profile)
 def updateUser(sender, instance, created, **kwargs):
     if not created:
@@ -56,7 +52,6 @@ def updateUser(sender, instance, created, **kwargs):
         user.email = instance.email
         user.save()
 
-# Удаление пользователя при удалении профиля
 @receiver(post_delete, sender=Profile)
 def deleteUser(sender, instance, **kwargs):
     try:

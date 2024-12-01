@@ -23,7 +23,6 @@ from .serializers import (
     RegistrationSerializer,
 )
 
-# Получение JWT токена
 @api_view(['POST'])
 def login_user(request):
     username = request.data.get('username')
@@ -39,7 +38,6 @@ def login_user(request):
     return Response({'detail': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
 
-# Регистрация пользователя
 class RegisterUserView(APIView):
     permission_classes = [AllowAny]
     def post(self, request):
@@ -55,17 +53,12 @@ class RegisterUserView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# Профили пользователей
 class ProfileViewSet(ModelViewSet):
     serializer_class = ProfileSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = Pagination
 
     def get_queryset(self, pk=None):
-        """
-        Возвращает профили текущего пользователя. Если параметр `search` передан,
-        выполняется поиск по имени или навыкам.
-        """
         search_query = self.request.query_params.get('search', None)
         if getattr(self, 'swagger_fake_view', False) or isinstance(self.request.user, AnonymousUser):
             return Profile.objects.none()
@@ -74,26 +67,18 @@ class ProfileViewSet(ModelViewSet):
         return Profile.objects.all()
 
     def perform_create(self, serializer):
-        """
-        Создаёт профиль, привязывая его к текущему пользователю.
-        """
-        # Проверка на существующий профиль (если должен быть уникальным)
         if Profile.objects.filter(user=self.request.user).exists():
             raise ValidationError("Профиль для данного пользователя уже существует.")
         serializer.save(user=self.request.user)
 
     @action(detail=False, methods=['get'], url_path='my-profile')
     def my_profile(self, request):
-        """
-        Возвращает профиль текущего пользователя.
-        """
         profile = Profile.objects.filter(user=request.user).first()
         if not profile:
             return Response({"detail": "Profile not found."}, status=404)
         serializer = self.get_serializer(profile)
         return Response(serializer.data)
 
-# Навыки
 class SkillViewSet(ModelViewSet):
     serializer_class = SkillSerializer
     permission_classes = [IsAuthenticated]
@@ -108,7 +93,6 @@ class SkillViewSet(ModelViewSet):
         serializer.save(owner=self.request.user.profile)
 
 
-# Сообщения
 class MessageViewSet(ModelViewSet):
     serializer_class = MessageSerializer
     permission_classes = [IsAuthenticated]
@@ -123,18 +107,15 @@ class MessageViewSet(ModelViewSet):
 
     def perform_create(self, serializer):
         sender = self.request.user.profile if self.request.user.is_authenticated else None
-        recipient_username = self.request.data.get('recipient')  # Получаем username из данных запроса
+        recipient_username = self.request.data.get('recipient')
 
         try:
-            # Ищем профиль получателя по username
             recipient = Profile.objects.get(username=recipient_username)
         except Profile.DoesNotExist:
             raise ValidationError({'recipient': 'Recipient not found.'})
 
-        # Сохраняем сообщение с отправителем и получателем
         serializer.save(sender=sender, recipient=recipient)
 
-# API маршруты
 @api_view(['GET'])
 def get_routes(request):
     routes = [

@@ -11,33 +11,34 @@ from rest_framework.response import Response
 
 @api_view(['GET'])
 def getRoutes(request):
-    """
-    Функция для получения всех доступных API маршрутов.
-    """
     routes = [
-        {'GET': '/api/main/'},  # Получить все проекты
-        {'GET': '/api/main/id'},  # Получить конкретный проект по id
-        {'POST': '/api/main/id/vote'},  # Отдать голос за проект
+        {'GET': '/api/main/'},
+        {'GET': '/api/main/id'},
+        {'POST': '/api/main/id/vote'},
     ]
     return Response(routes)
 
 @api_view(['GET'])
 def getProjects(request):
-    """
-    Получить список всех проектов.
-    """
-    projects = Project.objects.all()
-    serializer = ProjectSerializer(projects, many=True)
-    # pagination_class = paginateProjects()
+    projects, search = searchProjects(request)
 
-    return Response(serializer.data)
+    paginated_data = paginateProjects(request, projects)
+
+    serializer = ProjectSerializer(paginated_data["projects"], many=True)
+
+    return Response({
+        "projects": serializer.data,
+        "current_page": paginated_data["current_page"],
+        "total_pages": paginated_data["total_pages"],
+        "total_projects": paginated_data["total_projects"],
+        "search": search,
+    })
+
+
 
 
 @api_view(['GET'])
 def getProject(request, pk):
-    """
-    Получить данные о конкретном проекте по ID.
-    """
     try:
         project = Project.objects.get(id=pk)
     except Project.DoesNotExist:
@@ -50,9 +51,6 @@ def getProject(request, pk):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def projectVote(request, pk):
-    """
-    Голосование за проект.
-    """
     try:
         project = Project.objects.get(id=pk)
     except Project.DoesNotExist:
@@ -67,20 +65,17 @@ def projectVote(request, pk):
         project=project,
     )
 
-    review.value = data['value']  # "up" or "down"
+    review.value = data['value']
     review.body = data['body']
     review.save()
 
-    project.getVoteCount  # Обновление подсчета голосов
+    project.getVoteCount
     return Response({"detail": "Vote recorded successfully!"})
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def createProject(request):
-    """
-    Создать новый проект.
-    """
     data = request.data
     try:
         owner = request.user.profile
@@ -109,9 +104,6 @@ def createProject(request):
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
 def updateProject(request, pk):
-    """
-    Обновить проект.
-    """
     try:
         project = Project.objects.get(id=pk)
     except Project.DoesNotExist:
@@ -138,9 +130,6 @@ def updateProject(request, pk):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def deleteProject(request, pk):
-    """
-    Удалить проект.
-    """
     try:
         project = Project.objects.get(id=pk)
     except Project.DoesNotExist:
@@ -153,9 +142,6 @@ def deleteProject(request, pk):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def removeTag(request):
-    """
-    Удалить тег из проекта.
-    """
     tag_id = request.data['tag']
     project_id = request.data['project']
 

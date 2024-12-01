@@ -34,9 +34,6 @@ class Project(models.Model):
         return queryset
 
     def update_vote_count(self):
-        """
-        Обновляет рейтинг проекта, подсчитывая голоса.
-        """
         reviews = self.review_set.all()
         up_votes = reviews.filter(value='up').count()
         total_votes = reviews.count()
@@ -52,9 +49,6 @@ class Project(models.Model):
 
     @property
     def getVoteCount(self):
-        """
-        Возвращает количество голосов и рейтинг проекта.
-        """
         return {'total_votes': self.vote_total, 'vote_ratio': self.vote_ratio}
 
 

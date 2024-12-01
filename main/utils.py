@@ -3,50 +3,40 @@ from django.db.models import Q
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 
 
-def paginateProjects(request, projects, results):
-    """
-    Функция для пагинации проектов
-    """
-    page = request.GET.get('page')
-    paginator = Paginator(projects, results)
+def paginateProjects(request, projects):
+    page = int(request.GET.get('page', 1))
+    size = int(request.GET.get('size', 2))
+
+    paginator = Paginator(projects, size)
 
     try:
-        projects = paginator.page(page)
+        paginated_projects = paginator.page(page)
     except PageNotAnInteger:
         page = 1
-        projects = paginator.page(page)
+        paginated_projects = paginator.page(page)
     except EmptyPage:
         page = paginator.num_pages
-        projects = paginator.page(page)
+        paginated_projects = paginator.page(page)
 
-    leftIndex = (int(page) - 4)
-    if leftIndex < 1:
-        leftIndex = 1
+    return {
+        "projects": paginated_projects.object_list,
+        "current_page": page,
+        "total_pages": paginator.num_pages,
+        "total_projects": paginator.count,
+    }
 
-    rightIndex = (int(page) + 5)
-    if rightIndex > paginator.num_pages:
-        rightIndex = paginator.num_pages + 1
-
-    custom_range = range(leftIndex, rightIndex)
-
-    return custom_range, projects
 
 
 def searchProjects(request):
-    """
-    Функция для поиска проектов по различным полям
-    """
-    search_query = request.GET.get('search_query', '')  # Применяем дефолтное значение, если запрос пуст
+    search = request.GET.get('search', '')
 
-    # Фильтрация тегов по запросу
-    tags = Tag.objects.filter(name__icontains=search_query)
+    tags = Tag.objects.filter(name__icontains=search)
 
-    # Поиск по проектам с использованием нескольких полей (заголовок, описание, имя владельца, теги)
     projects = Project.objects.distinct().filter(
-        Q(title__icontains=search_query) |
-        Q(description__icontains=search_query) |
-        Q(owner__name__icontains=search_query) |
+        Q(title__icontains=search) |
+        Q(description__icontains=search) |
+        Q(owner__name__icontains=search) |
         Q(tags__in=tags)
     )
 
-    return projects, search_query
+    return projects, search
