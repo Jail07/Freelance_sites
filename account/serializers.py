@@ -1,3 +1,4 @@
+from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import Profile, Skill, Message
@@ -61,9 +62,16 @@ class RegistrationSerializer(serializers.ModelSerializer):
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
+        password = validated_data.get('password')
+
+        try:
+            validate_password(password)
+        except Exception as e:
+            raise serializers.ValidationError(str(e))
+
         user = User.objects.create_user(
             username=validated_data['username'],
-            password=validated_data['password'],
+            password=password,
             email=validated_data['email']
         )
         return user
