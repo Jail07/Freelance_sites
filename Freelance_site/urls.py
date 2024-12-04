@@ -9,9 +9,9 @@ schema_view = get_schema_view(
     openapi.Info(
         title="Freelance Platform API",
         default_version='v1',
-        description="API для платформы фрилансеров",
-        contact=openapi.Contact(email="contact@freelance.com"),
-        license=openapi.License(name="MIT License"),
+        description="API для Chernorabochih",
+        contact=openapi.Contact(email="test.account.for.project@mail.com"),
+        license=openapi.License(name="Ala-Too License"),
     ),
     public=True,
     permission_classes=(permissions.AllowAny,),
@@ -19,9 +19,7 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('main/', include('main.urls')),
-    path('', include('account.urls')),
-
+    path('api/v1/', include('main.urls')),
+    path('api/v1/', include('account.urls')),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-    path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 ]

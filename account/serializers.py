@@ -1,12 +1,14 @@
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
-from django.contrib.auth.models import User
-from .models import Profile, Skill, Message
+# from django.contrib.auth.models import
+from .models import Profile, Skill, Message, CustomUser, CustomUserManager
+
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
+        model = CustomUser
         fields = ['username', 'email']
+
 
 class SkillSerializer(serializers.ModelSerializer):
     class Meta:
@@ -18,19 +20,22 @@ class ProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(required=False)
     skills = SkillSerializer(many=True, read_only=True, source='skill_set')
 
-
     class Meta:
         model = Profile
-        fields = ['id', 'user', 'name', 'email', 'username', 'location', 'bio', 'profile_image', 'skills', 'created']
+        fields = ['id', 'user', 'name', 'surname', 'location', 'bio', 'profile_image', 'skills', 'created']
         read_only_fields = ['id']
 
     def create(self, validated_data):
-        user_data = validated_data.pop('user', None)
-        if user_data:
-            user = User.objects.create(**user_data)
-            profile = Profile.objects.create(user=user, **validated_data)
-        else:
-            profile = Profile.objects.create(**validated_data)
+        # Получаем текущего пользователя из контекста
+        request_user = self.context['request'].user
+        if not request_user or not request_user.is_authenticated:
+            raise serializers.ValidationError("User must be authenticated to create a profile.")
+
+        # Убедимся, что ключа 'user' в validated_data больше нет
+        validated_data.pop('user', None)
+
+        # Создаем профиль для текущего пользователя
+        profile = Profile.objects.create(user=request_user, **validated_data)
         return profile
 
     def update(self, instance, validated_data):
@@ -46,18 +51,19 @@ class ProfileSerializer(serializers.ModelSerializer):
         return instance
 
 
-
 class MessageSerializer(serializers.ModelSerializer):
     sender = UserSerializer(read_only=True)
     recipient = UserSerializer(read_only=True)
 
     class Meta:
         model = Message
-        fields = '__all__'
+        fields = ['id', 'sender', 'recipient', 'subject', 'body', 'is_read', 'created']
+        read_only_fields = ['is_read', 'sender', 'created']
+
 
 class RegistrationSerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
+        model = CustomUser
         fields = ['username', 'password', 'email']
         extra_kwargs = {'password': {'write_only': True}}
 
@@ -69,7 +75,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
         except Exception as e:
             raise serializers.ValidationError(str(e))
 
-        user = User.objects.create_user(
+        user = CustomUser.objects.create_user(
             username=validated_data['username'],
             password=password,
             email=validated_data['email']

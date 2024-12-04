@@ -1,18 +1,16 @@
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError, PermissionDenied
+from rest_framework.generics import get_object_or_404
 from rest_framework.views import APIView
-from rest_framework.viewsets import ModelViewSet
-from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
-
-from django.contrib.auth import get_user_model, authenticate
-from django.contrib.auth.models import User, AnonymousUser
-from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .utils import Pagination, search_profiles
+from drf_yasg.utils import swagger_auto_schema
+
+from django.contrib.auth import get_user_model, authenticate
+
+from .utils import Pagination, search_profiles, paginateProfile
 
 from .models import Profile, Skill, Message
 from .serializers import (
@@ -23,23 +21,35 @@ from .serializers import (
     RegistrationSerializer,
 )
 
-@api_view(['POST'])
-def login_user(request):
-    username = request.data.get('username')
-    password = request.data.get('password')
-    user = authenticate(username=username, password=password)
 
-    if user is not None:
-        refresh = RefreshToken.for_user(user)
-        return Response({
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-        })
-    return Response({'detail': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+class LoginUserView(APIView):
+    permission_classes = [AllowAny]
+
+    @swagger_auto_schema(
+        request_body=UserSerializer,
+        responses={201: UserSerializer},
+    )
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+        user = authenticate(username=username, password=password)
+
+        if user is not None:
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            })
+        return Response({'detail': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 class RegisterUserView(APIView):
     permission_classes = [AllowAny]
+
+    @swagger_auto_schema(
+        request_body=RegistrationSerializer,
+        responses={201: RegistrationSerializer},
+    )
     def post(self, request):
         serializer = RegistrationSerializer(data=request.data)
         if serializer.is_valid():
@@ -52,77 +62,206 @@ class RegisterUserView(APIView):
             })
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
-class ProfileViewSet(ModelViewSet):
+class ProfileDetailView(APIView):
     serializer_class = ProfileSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = Pagination
 
-    def get_queryset(self, pk=None):
-        search_query = self.request.query_params.get('search', None)
-        if getattr(self, 'swagger_fake_view', False) or isinstance(self.request.user, AnonymousUser):
-            return Profile.objects.none()
-        if search_query:
-            return search_profiles(search_query).filter(user=self.request.user)
-        return Profile.objects.all()
+    def get(self, request, pk):
 
-    def perform_create(self, serializer):
-        if Profile.objects.filter(user=self.request.user).exists():
-            raise ValidationError("Профиль для данного пользователя уже существует.")
-        serializer.save(user=self.request.user)
-
-    @action(detail=False, methods=['get'], url_path='my-profile')
-    def my_profile(self, request):
-        profile = Profile.objects.filter(user=request.user).first()
-        if not profile:
-            return Response({"detail": "Profile not found."}, status=404)
-        serializer = self.get_serializer(profile)
+        project = get_object_or_404(Profile, id=pk)
+        serializer = ProfileSerializer(project, many=False)
         return Response(serializer.data)
 
-class SkillViewSet(ModelViewSet):
+    @swagger_auto_schema(
+        request_body=ProfileSerializer,
+        responses={200: ProfileSerializer},
+    )
+    def put(self, request, pk=None):
+        # Получаем профиль пользователя, который пытается обновить свои данные
+        try:
+            profile = Profile.objects.get(pk=pk, user=self.request.user)
+        except Profile.DoesNotExist:
+            raise ValidationError("Вы не можете редактировать профиль другого пользователя.")
+
+        # Обновляем профиль
+        serializer = self.serializer_class(profile, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @swagger_auto_schema(
+        request_body=ProfileSerializer,
+        responses={200: ProfileSerializer},
+    )
+    def patch(self, request, pk=None):
+        # Получаем профиль пользователя, который пытается обновить свои данные
+        try:
+            profile = Profile.objects.get(pk=pk, user=self.request.user)
+        except Profile.DoesNotExist:
+            raise ValidationError("Вы не можете редактировать профиль другого пользователя.")
+
+        # Частичное обновление профиля
+        serializer = self.serializer_class(profile, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ProfileView(APIView):
+    serializer_class = ProfileSerializer
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
+    def get(self, request):
+        profiles, search_query = search_profiles(request)
+        paginated_data = paginateProfile(request, profiles)
+        print(paginated_data)
+
+        serializer = ProfileSerializer(paginated_data['profiles'], many=True)
+        return Response({
+            "profiles": serializer.data,
+            "current_page": request.GET.get('page', 1),
+            "search_query": search_query,
+            "total_profiles": len(profiles),
+        })
+
+    @swagger_auto_schema(
+        request_body=ProfileSerializer,
+        responses={201: ProfileSerializer},
+    )
+    def post(self, request):
+        if Profile.objects.filter(user=self.request.user).exists():
+            raise ValidationError("Профиль для данного пользователя уже существует.")
+
+        serializer = ProfileSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save(user=self.request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # @swagger_auto_schema(
+    #     request_body=ProfileSerializer,
+    #     responses={201: ProfileSerializer},
+    # )
+    # def post(self, request):
+    #     """
+    #     Создать новый проект.
+    #     """
+    #     owner = request.user.profile
+    #     data = request.data
+    #
+    #     profile = Profile.objects.create(
+    #         owner=owner,
+    #         title=data.get('title'),
+    #         description=data.get('description'),
+    #     )
+    #
+    #     skills = data.get('skills', [])
+    #     for skill_name in skills:
+    #         skill, _ = Skill.objects.get_or_create(name=skill_name)
+    #         profile.skill.add(skill)
+    #
+    #     profile.save()
+    #     serializer = ProfileSerializer(profile, many=False)
+    #     return Response(serializer.data, status=201)
+
+
+class SkillView(APIView):
     serializer_class = SkillSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = Pagination
 
-    def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False) or isinstance(self.request.user, AnonymousUser):
-            return Profile.objects.none()
+    def get(self, request):
         return Skill.objects.filter(owner=self.request.user.profile)
 
-    def perform_create(self, serializer):
+    @swagger_auto_schema(
+        request_body=SkillSerializer,
+        responses={201: SkillSerializer},
+    )
+    def post(self, serializer):
         serializer.save(owner=self.request.user.profile)
 
 
-class MessageViewSet(ModelViewSet):
+class MessageView(APIView):
     serializer_class = MessageSerializer
     permission_classes = [IsAuthenticated]
-    pagination_class = Pagination
 
+    def get(self, request):
+        user = request.user.profile
+        # Получение всех сообщений, отправленных и полученных текущим пользователем
+        messages = Message.objects.filter(sender=user) | Message.objects.filter(recipient=user)
+        serializer = MessageSerializer(messages, many=True)
+        return Response(serializer.data)
 
-    def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False) or isinstance(self.request.user, AnonymousUser):
-            return Profile.objects.none()
-        user = self.request.user.profile
-        return Message.objects.filter(sender=user) | Message.objects.filter(recipient=user)
-
-    def perform_create(self, serializer):
-        sender = self.request.user.profile if self.request.user.is_authenticated else None
-        recipient_username = self.request.data.get('recipient')
+    @swagger_auto_schema(
+        request_body=MessageSerializer,
+        responses={201: MessageSerializer},
+    )
+    def post(self, request):
+        sender = request.user.profile
+        recipient_username = request.data.get('recipient')
 
         try:
-            recipient = Profile.objects.get(username=recipient_username)
+            recipient = Profile.objects.get(user__username=recipient_username)
         except Profile.DoesNotExist:
             raise ValidationError({'recipient': 'Recipient not found.'})
 
-        serializer.save(sender=sender, recipient=recipient)
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            serializer.save(sender=sender, recipient=recipient)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['GET'])
-def get_routes(request):
-    routes = [
-        {'POST': '/api/account/login/'},
-        {'POST': '/api/account/register/'},
-        {'GET': '/api/profile/'},
-        {'GET': '/api/skills/'},
-        {'GET': '/api/messages/'},
-    ]
-    return Response(routes)
+class MessageDeatailView(APIView):
+    serializer_class = MessageSerializer
+
+    @swagger_auto_schema(
+        request_body=MessageSerializer,
+        responses={201: MessageSerializer},
+    )
+    def put(self, request, pk):
+        """Обновление сообщения, если оно еще не прочитано."""
+        message = get_object_or_404(Message, pk=pk, sender=request.user.profile)
+
+        if message.is_read:
+            raise PermissionDenied("Cannot edit a message that has already been read by the recipient.")
+
+        serializer = self.serializer_class(message, data=request.data, partial=False)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @swagger_auto_schema(
+        request_body=MessageSerializer,
+        responses={201: MessageSerializer},
+    )
+    def patch(self, request, pk):
+        """Частичное обновление сообщения, если оно еще не прочитано."""
+        message = get_object_or_404(Message, pk=pk, sender=request.user.profile)
+
+        if message.is_read:
+            raise PermissionDenied("Cannot edit a message that has already been read by the recipient.")
+
+        serializer = self.serializer_class(message, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        """Удаление сообщения, если оно еще не прочитано."""
+        message = get_object_or_404(Message, pk=pk, sender=request.user.profile)
+
+        if message.is_read:
+            raise PermissionDenied("Cannot delete a message that has already been read by the recipient.")
+
+        message.delete()
+        return Response({"detail": "Message deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+

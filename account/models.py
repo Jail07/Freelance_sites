@@ -1,15 +1,44 @@
 from django.db import models
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, AbstractUser, BaseUserManager
 import uuid
 
 
+class CustomUserManager(BaseUserManager):
+    def create_user(self, username, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError('The Email field must be set.')
+        if not username:
+            raise ValueError('The Username field must be set.')
+
+        email = self.normalize_email(email)
+        username = self.model.normalize_username(username)
+        user = self.model(username=username, email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, username, email, password=None, **extra_fields):
+        extra_fields.setdefault('is_superuser', True)
+
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+
+        return self.create_user(username, email, password, **extra_fields)
+
+
+class CustomUser(AbstractUser):
+    email = models.EmailField(unique=True)  # Email должен быть уникальным
+    objects = CustomUserManager()  # Связываем менеджер с моделью
+
+    def __str__(self):
+        return self.username
+
 class Profile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
-    name = models.CharField(max_length=200, blank=True, null=True)
-    email = models.EmailField(max_length=500, blank=True, null=True)
-    username = models.CharField(max_length=200, blank=True, null=True)
-    location = models.CharField(max_length=200, blank=True, null=True)
-    bio = models.TextField(blank=True, null=True)
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="profile")
+    name = models.CharField(max_length=200, blank=False, null=False)
+    surname = models.CharField(max_length=200, blank=False, null=False)
+    location = models.CharField(max_length=200, blank=False, null=False)
+    bio = models.TextField(blank=True, null=False)
     profile_image = models.ImageField(
         null=True,
         blank=True,
@@ -20,7 +49,7 @@ class Profile(models.Model):
     id = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False)
 
     def __str__(self):
-        return str(self.username or "Unnamed User")
+        return str(self.user or "Unnamed User")
 
     class Meta:
         ordering = ["-created"]
@@ -44,18 +73,13 @@ class Skill(models.Model):
 
 
 class Message(models.Model):
-    sender = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True, blank=True)
-    recipient = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True, blank=True, related_name="messages")
-    name = models.CharField(max_length=200, null=True, blank=True)
-    email = models.EmailField(max_length=200, null=True, blank=True)
-    subject = models.CharField(max_length=200, null=True, blank=True)
+    sender = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="sent_messages")
+    recipient = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="received_messages")
+    subject = models.CharField(max_length=255, blank=False, null=False)
     body = models.TextField()
-    is_read = models.BooleanField(default=False)
+    is_read = models.BooleanField(default=False)  # Поле для отслеживания прочтения
     created = models.DateTimeField(auto_now_add=True)
     id = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False)
 
     def __str__(self):
-        return self.subject or "No Subject"
-
-    class Meta:
-        ordering = ["is_read", "-created"]
+        return f"Message from {self.sender} to {self.recipient}"
