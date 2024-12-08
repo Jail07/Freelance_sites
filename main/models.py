@@ -13,12 +13,27 @@ class Project(models.Model):
     vote_ratio = models.IntegerField(default=0, null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True)
     id = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False)
+    required_workers = models.IntegerField(default=1)  # Сколько работников нужно
+    team_members = models.ManyToManyField(Profile, related_name='projects', blank=True)  # Члены команды
 
     def __str__(self):
         return self.title
 
     class Meta:
         ordering = ['-vote_ratio', '-vote_total', 'title']
+
+    @property
+    def is_hidden(self):
+        """Скрыть проект, если команда набрана"""
+        return self.team_members.count() >= self.required_workers
+
+    def add_team_member(self, profile):
+        """Добавить участника в команду, если есть свободное место"""
+        if not self.is_hidden:
+            self.team_members.add(profile)
+            self.save()
+        else:
+            raise ValueError("Команда уже набрана")
 
     @property
     def imageURL(self):
@@ -69,6 +84,20 @@ class Review(models.Model):
 
     def __str__(self):
         return f'{self.owner} voted {self.value}'
+
+class Bids(models.Model):
+    sender = models.ForeignKey(Profile, on_delete=models.CASCADE, null=True)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE)
+    body = models.TextField(null=True, blank=True)
+    subject = models.CharField(max_length=200)
+    created = models.DateTimeField(auto_now_add=True)
+    id = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False)
+
+    class Meta:
+        unique_together = [['sender', 'project']]
+
+    def __str__(self):
+        return f'{self.sender} about {self.subject}'
 
 
 class Tag(models.Model):

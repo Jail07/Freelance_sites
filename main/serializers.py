@@ -1,13 +1,21 @@
 from rest_framework import serializers
-from main.models import Project, Tag, Review
+from main.models import Project, Tag, Review, Bids
 from account.serializers import ProfileSerializer
 
 
 class ReviewSerializer(serializers.ModelSerializer):
-    owner = ProfileSerializer(many=False)
+    owner = serializers.StringRelatedField()  # Показывает имя владельца
 
     class Meta:
         model = Review
+        fields = '__all__'
+
+
+class BidSerializer(serializers.ModelSerializer):
+    sender = serializers.StringRelatedField()  # Показывает имя отправителя
+
+    class Meta:
+        model = Bids
         fields = '__all__'
 
 
@@ -21,6 +29,8 @@ class ProjectSerializer(serializers.ModelSerializer):
     owner = ProfileSerializer(many=False)
     tags = TagSerializer(many=True)
     reviews = serializers.SerializerMethodField()
+    team_members = serializers.StringRelatedField(many=True)
+    # bids = BidSerializer(many=True)
 
     class Meta:
         model = Project
@@ -30,3 +40,5 @@ class ProjectSerializer(serializers.ModelSerializer):
         reviews = obj.review_set.all()
         serializer = ReviewSerializer(reviews, many=True)
         return serializer.data
+
+

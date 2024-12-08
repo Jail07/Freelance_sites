@@ -1,6 +1,10 @@
+import os
+
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
-# from django.contrib.auth.models import
+from django.core.files import File
+from rest_framework.exceptions import ValidationError
+
 from .models import Profile, Skill, Message, CustomUser, CustomUserManager
 
 
@@ -17,48 +21,57 @@ class SkillSerializer(serializers.ModelSerializer):
 
 
 class ProfileSerializer(serializers.ModelSerializer):
-    user = UserSerializer(required=False)
     skills = SkillSerializer(many=True, read_only=True, source='skill_set')
 
     class Meta:
         model = Profile
-        fields = ['id', 'user', 'name', 'surname', 'location', 'bio', 'profile_image', 'skills', 'created']
-        read_only_fields = ['id']
+        fields = ['id', 'name', 'surname', 'location', 'bio', 'profile_image', 'skills', 'created']
+        read_only_fields = ['id', 'profile_image']
 
     def create(self, validated_data):
-        # Получаем текущего пользователя из контекста
         request_user = self.context['request'].user
         if not request_user or not request_user.is_authenticated:
             raise serializers.ValidationError("User must be authenticated to create a profile.")
 
-        # Убедимся, что ключа 'user' в validated_data больше нет
-        validated_data.pop('user', None)
-
-        # Создаем профиль для текущего пользователя
         profile = Profile.objects.create(user=request_user, **validated_data)
+
+        profile_image_path = self.context['request'].data.get('profile_image', None)
+        if profile_image_path:
+            if os.path.exists(profile_image_path):  # Проверяем существование файла
+                with open(profile_image_path, "rb") as image_file:
+                    profile.profile_image.save(os.path.basename(profile_image_path), File(image_file))
+            else:
+                raise ValidationError({"profile_image": "Файл по указанному пути не найден."})
+
+        profile.save()
         return profile
 
     def update(self, instance, validated_data):
-        user_data = validated_data.pop('user', None)
-        if user_data:
-            for attr, value in user_data.items():
-                setattr(instance.user, attr, value)
-            instance.user.save()
+        profile_image_path = self.context['request'].data.get('profile_image', None)
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
+
+        if profile_image_path:
+            if os.path.exists(profile_image_path):
+                with open(profile_image_path, "rb") as image_file:
+                    instance.profile_image.save(os.path.basename(profile_image_path), File(image_file))
+            else:
+                raise ValidationError({"profile_image": "Файл по указанному пути не найден."})
+
         instance.save()
         return instance
 
 
+
 class MessageSerializer(serializers.ModelSerializer):
-    sender = UserSerializer(read_only=True)
-    recipient = UserSerializer(read_only=True)
+    sender = ProfileSerializer(read_only=True)
+    recipient = ProfileSerializer(read_only=True)
 
     class Meta:
         model = Message
         fields = ['id', 'sender', 'recipient', 'subject', 'body', 'is_read', 'created']
-        read_only_fields = ['is_read', 'sender', 'created']
+        read_only_fields = ['id', 'sender', 'recipient', 'is_read', 'created']
 
 
 class RegistrationSerializer(serializers.ModelSerializer):
@@ -78,6 +91,8 @@ class RegistrationSerializer(serializers.ModelSerializer):
         user = CustomUser.objects.create_user(
             username=validated_data['username'],
             password=password,
-            email=validated_data['email']
+            email=validated_data['email'],
+            is_active=True  # Убедитесь, что пользователь активен
         )
         return user
+

@@ -12,7 +12,7 @@ from django.contrib.auth import get_user_model, authenticate
 
 from .utils import Pagination, search_profiles, paginateProfile
 
-from .models import Profile, Skill, Message
+from .models import Profile, Skill, Message, CustomUser
 from .serializers import (
     UserSerializer,
     ProfileSerializer,
@@ -73,19 +73,72 @@ class ProfileDetailView(APIView):
         serializer = ProfileSerializer(project, many=False)
         return Response(serializer.data)
 
+    # @swagger_auto_schema(
+    #     request_body=ProfileSerializer,
+    #     responses={200: ProfileSerializer},
+    # )
+    # def put(self, request, pk=None):
+    #     # Получаем профиль пользователя, который пытается обновить свои данные
+    #     try:
+    #         profile = Profile.objects.get(pk=pk, user=self.request.user)
+    #     except Profile.DoesNotExist:
+    #         raise ValidationError("Вы не можете редактировать профиль другого пользователя.")
+    #
+    #     # Обновляем профиль
+    #     serializer = self.serializer_class(profile, data=request.data)
+    #     if serializer.is_valid():
+    #         serializer.save()
+    #         return Response(serializer.data, status=status.HTTP_200_OK)
+    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    #
+    # @swagger_auto_schema(
+    #     request_body=ProfileSerializer,
+    #     responses={200: ProfileSerializer},
+    # )
+    # def patch(self, request, pk=None):
+    #     # Получаем профиль пользователя, который пытается обновить свои данные
+    #     try:
+    #         profile = Profile.objects.get(pk=pk, user=self.request.user)
+    #     except Profile.DoesNotExist:
+    #         raise ValidationError("Вы не можете редактировать профиль другого пользователя.")
+    #
+    #     # Частичное обновление профиля
+    #     serializer = self.serializer_class(profile, data=request.data, partial=True)
+    #     if serializer.is_valid():
+    #         serializer.save()
+    #         return Response(serializer.data, status=status.HTTP_200_OK)
+    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class MyProfileDetailView(APIView):
+    serializer_class = ProfileSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        profile = get_object_or_404(Profile, user=request.user)
+        serializer = ProfileSerializer(profile, many=False)
+        return Response(serializer.data)
+
+    @swagger_auto_schema(
+        request_body=ProfileSerializer,
+        responses={201: ProfileSerializer},
+    )
+    def post(self, request):
+        if Profile.objects.filter(user=request.user).exists():
+            raise ValidationError("Профиль для данного пользователя уже существует.")
+
+        serializer = ProfileSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     @swagger_auto_schema(
         request_body=ProfileSerializer,
         responses={200: ProfileSerializer},
     )
-    def put(self, request, pk=None):
-        # Получаем профиль пользователя, который пытается обновить свои данные
-        try:
-            profile = Profile.objects.get(pk=pk, user=self.request.user)
-        except Profile.DoesNotExist:
-            raise ValidationError("Вы не можете редактировать профиль другого пользователя.")
-
-        # Обновляем профиль
-        serializer = self.serializer_class(profile, data=request.data)
+    def put(self, request):
+        profile = get_object_or_404(Profile, user=request.user)
+        serializer = ProfileSerializer(profile, data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -95,10 +148,10 @@ class ProfileDetailView(APIView):
         request_body=ProfileSerializer,
         responses={200: ProfileSerializer},
     )
-    def patch(self, request, pk=None):
+    def patch(self, request):
         # Получаем профиль пользователя, который пытается обновить свои данные
         try:
-            profile = Profile.objects.get(pk=pk, user=self.request.user)
+            profile = Profile.objects.get(user=self.request.user)
         except Profile.DoesNotExist:
             raise ValidationError("Вы не можете редактировать профиль другого пользователя.")
 
@@ -108,6 +161,15 @@ class ProfileDetailView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request):
+        try:
+            profile = Profile.objects.get(user=self.request.user)
+            profile.delete()
+            return Response({"detail": "Profile deleted successfully!"}, status=status.HTTP_200_OK)
+        except Profile.DoesNotExist:
+            return Response({"detail": "Something went to wrong"}, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 class ProfileView(APIView):
@@ -130,46 +192,6 @@ class ProfileView(APIView):
             "search_query": search_query,
             "total_profiles": len(profiles),
         })
-
-    @swagger_auto_schema(
-        request_body=ProfileSerializer,
-        responses={201: ProfileSerializer},
-    )
-    def post(self, request):
-        if Profile.objects.filter(user=self.request.user).exists():
-            raise ValidationError("Профиль для данного пользователя уже существует.")
-
-        serializer = ProfileSerializer(data=request.data, context={'request': request})
-        if serializer.is_valid():
-            serializer.save(user=self.request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    # @swagger_auto_schema(
-    #     request_body=ProfileSerializer,
-    #     responses={201: ProfileSerializer},
-    # )
-    # def post(self, request):
-    #     """
-    #     Создать новый проект.
-    #     """
-    #     owner = request.user.profile
-    #     data = request.data
-    #
-    #     profile = Profile.objects.create(
-    #         owner=owner,
-    #         title=data.get('title'),
-    #         description=data.get('description'),
-    #     )
-    #
-    #     skills = data.get('skills', [])
-    #     for skill_name in skills:
-    #         skill, _ = Skill.objects.get_or_create(name=skill_name)
-    #         profile.skill.add(skill)
-    #
-    #     profile.save()
-    #     serializer = ProfileSerializer(profile, many=False)
-    #     return Response(serializer.data, status=201)
 
 
 class SkillView(APIView):
@@ -205,15 +227,26 @@ class MessageView(APIView):
     )
     def post(self, request):
         sender = request.user.profile
-        recipient_username = request.data.get('recipient')
+        recipient_username = request.data.get('recipient')  # Получаем имя пользователя получателя из данных запроса
+        print(recipient_username)
 
+        # Проверяем, что `recipient` передан в запросе
+        if not recipient_username:
+            raise ValidationError({'recipient': 'Recipient username is required.'})
+
+        print(recipient_username['username'])
         try:
-            recipient = Profile.objects.get(user__username=recipient_username)
-        except Profile.DoesNotExist:
+            # Ищем пользователя по имени пользователя
+            recipient_user = CustomUser.objects.get(email=recipient_username['email'])
+            # Получаем профиль получателя
+            recipient = recipient_user.profile
+        except CustomUser.DoesNotExist:
             raise ValidationError({'recipient': 'Recipient not found.'})
 
+        # Сериализация данных
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
+            # Сохраняем сообщение с отправителем и получателем
             serializer.save(sender=sender, recipient=recipient)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
