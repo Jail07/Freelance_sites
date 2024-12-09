@@ -5,7 +5,7 @@ from rest_framework import serializers
 from django.core.files import File
 from rest_framework.exceptions import ValidationError
 
-from .models import Profile, Skill, Message, CustomUser, CustomUserManager
+from .models import Profile, Skill, Message, CustomUser
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -92,7 +92,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
             username=validated_data['username'],
             password=password,
             email=validated_data['email'],
-            is_active=True  # Убедитесь, что пользователь активен
+            is_active=True
         )
         return user
 

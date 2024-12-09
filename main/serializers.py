@@ -4,7 +4,7 @@ from account.serializers import ProfileSerializer
 
 
 class ReviewSerializer(serializers.ModelSerializer):
-    owner = serializers.StringRelatedField()  # Показывает имя владельца
+    owner = serializers.StringRelatedField()
 
     class Meta:
         model = Review
@@ -12,7 +12,7 @@ class ReviewSerializer(serializers.ModelSerializer):
 
 
 class BidSerializer(serializers.ModelSerializer):
-    sender = serializers.StringRelatedField()  # Показывает имя отправителя
+    sender = serializers.StringRelatedField()
 
     class Meta:
         model = Bids

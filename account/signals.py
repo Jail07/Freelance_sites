@@ -18,19 +18,17 @@ class EmailThread(threading.Thread):
         self.email.send()
 
 
-# Signal to create a Profile when a new CustomUser is created
 @receiver(post_save, sender=CustomUser)
 def createProfile(sender, instance, created, **kwargs):
     if created:
         profile = Profile.objects.create(
             user=instance,
-            name=instance.username,  # Initial name matches username
+            name=instance.username,
             surname="",
             location="",
             bio="",
         )
 
-        # Send welcome email
         context = {
             "title": "Thank you",
             "content": "We are glad you are here!",
@@ -49,13 +47,12 @@ def createProfile(sender, instance, created, **kwargs):
         EmailThread(email).start()
 
 
-# Signal to update the CustomUser when the Profile is updated
 @receiver(post_save, sender=Profile)
 def updateUser(sender, instance, created, **kwargs):
     if not created:
         user = instance.user
-        user.username = instance.name  # Update username based on profile name
-        user.email = instance.user.email  # No changes to email here
+        user.username = instance.name
+        user.email = instance.user.email
         user.save()
 
 

@@ -5,11 +5,9 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
-    # JWT токены
     path('account/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('account/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
-    # Аутентификация и регистрация
     path('account/login/', views.LoginUserView.as_view(), name="api-login"),
     path('account/register/', views.RegisterUserView.as_view(), name="api-register"),
 

@@ -31,17 +31,6 @@ def paginateProfile(request, profiles):
         "total_profiles": paginator.count,
     }
 
-# Поиск профилей
-# def search_profiles(search_query=None):
-#     if not search_query:
-#         return Profile.objects.all()
-#
-#     skills = Skill.objects.filter(name__icontains=search_query)
-#     profiles = Profile.objects.distinct().filter(
-#         Q(name__icontains=search_query) |
-#         Q(skill__in=skills)
-#     )
-#     return profiles
 
 def search_profiles(request):
     search = request.GET.get('search', '')

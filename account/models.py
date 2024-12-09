@@ -28,8 +28,8 @@ class CustomUserManager(BaseUserManager):
 
 
 class CustomUser(AbstractUser):
-    email = models.EmailField(unique=True)  # Email должен быть уникальным
-    objects = CustomUserManager()  # Связываем менеджер с моделью
+    email = models.EmailField(unique=True)
+    objects = CustomUserManager()
 
     def __str__(self):
         return self.username
@@ -78,7 +78,7 @@ class Message(models.Model):
     recipient = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="received_messages")
     subject = models.CharField(max_length=255, blank=False, null=False)
     body = models.TextField()
-    is_read = models.BooleanField(default=False)  # Поле для отслеживания прочтения
+    is_read = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)
     id = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False)
 

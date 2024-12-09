@@ -96,9 +96,6 @@ class ProjectDetailView(APIView):
         return Response(serializer.data)
 
     def delete(self, request, pk):
-        """
-        Удалить проект.
-        """
         project = get_object_or_404(Project, id=pk)
         project.delete()
         return Response({"detail": "Project deleted successfully!"}, status=204)
@@ -136,15 +133,9 @@ class ReviewListView(APIView):
 
 
 class TagView(APIView):
-    """
-    API для управления тегами.
-    """
-    permission_classes = [IsAuthenticated]  # Доступ только для администраторов
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        """
-        Получить список всех тегов.
-        """
         tags = Tag.objects.all()
         serializer = TagSerializer(tags, many=True)
         return Response(serializer.data)
@@ -154,9 +145,6 @@ class TagView(APIView):
         responses={201: TagSerializer}
     )
     def post(self, request):
-        """
-        Создать новый тег.
-        """
         serializer = TagSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -165,19 +153,13 @@ class TagView(APIView):
 
 
 class TagDetailView(APIView):
-    """
-    API для управления конкретным тегом.
-    """
-    permission_classes = [IsAdminUser]  # Доступ только для администраторов
+    permission_classes = [IsAdminUser]
 
     @swagger_auto_schema(
         request_body=TagSerializer,
         responses={200: TagSerializer}
     )
     def put(self, request, pk):
-        """
-        Обновить тег.
-        """
         tag = get_object_or_404(Tag, id=pk)
         serializer = TagSerializer(tag, data=request.data, partial=True)
         if serializer.is_valid():
@@ -186,16 +168,12 @@ class TagDetailView(APIView):
         return Response(serializer.errors, status=400)
 
     def delete(self, request, pk):
-        """
-        Удалить тег.
-        """
         tag = get_object_or_404(Tag, id=pk)
         tag.delete()
         return Response({"detail": "Tag deleted successfully!"}, status=204)
 
 
 class BidListView(APIView):
-    """Просмотр всех заявок, созданных текущим пользователем"""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -216,7 +194,6 @@ class ProjectBidsView(APIView):
         if project.owner != request.user.profile:
             return Response({'detail': 'Нет доступа к заявкам этого проекта'}, status=status.HTTP_403_FORBIDDEN)
 
-        # Получаем все заявки, связанные с проектом
         bids = Bids.objects.filter(project=project)
         serializer = BidSerializer(bids, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -232,7 +209,6 @@ class ProjectBidsView(APIView):
             return Response({"detail": "Project not found."}, status=404)
         user = self.request.user.profile
         data = self.request.data
-        print(data)
         review, created = Bids.objects.get_or_create(
             sender=user,
             project=project,
@@ -244,7 +220,6 @@ class ProjectBidsView(APIView):
 
 
 class AddTeamMemberView(APIView):
-    """Добавление пользователя в проект по username"""
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(

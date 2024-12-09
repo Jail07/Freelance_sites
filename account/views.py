@@ -8,7 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from drf_yasg.utils import swagger_auto_schema
 
-from django.contrib.auth import get_user_model, authenticate
+from django.contrib.auth import authenticate
 
 from .utils import Pagination, search_profiles, paginateProfile
 
@@ -73,42 +73,6 @@ class ProfileDetailView(APIView):
         serializer = ProfileSerializer(project, many=False)
         return Response(serializer.data)
 
-    # @swagger_auto_schema(
-    #     request_body=ProfileSerializer,
-    #     responses={200: ProfileSerializer},
-    # )
-    # def put(self, request, pk=None):
-    #     # Получаем профиль пользователя, который пытается обновить свои данные
-    #     try:
-    #         profile = Profile.objects.get(pk=pk, user=self.request.user)
-    #     except Profile.DoesNotExist:
-    #         raise ValidationError("Вы не можете редактировать профиль другого пользователя.")
-    #
-    #     # Обновляем профиль
-    #     serializer = self.serializer_class(profile, data=request.data)
-    #     if serializer.is_valid():
-    #         serializer.save()
-    #         return Response(serializer.data, status=status.HTTP_200_OK)
-    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    #
-    # @swagger_auto_schema(
-    #     request_body=ProfileSerializer,
-    #     responses={200: ProfileSerializer},
-    # )
-    # def patch(self, request, pk=None):
-    #     # Получаем профиль пользователя, который пытается обновить свои данные
-    #     try:
-    #         profile = Profile.objects.get(pk=pk, user=self.request.user)
-    #     except Profile.DoesNotExist:
-    #         raise ValidationError("Вы не можете редактировать профиль другого пользователя.")
-    #
-    #     # Частичное обновление профиля
-    #     serializer = self.serializer_class(profile, data=request.data, partial=True)
-    #     if serializer.is_valid():
-    #         serializer.save()
-    #         return Response(serializer.data, status=status.HTTP_200_OK)
-    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 class MyProfileDetailView(APIView):
     serializer_class = ProfileSerializer
     permission_classes = [IsAuthenticated]
@@ -149,13 +113,11 @@ class MyProfileDetailView(APIView):
         responses={200: ProfileSerializer},
     )
     def patch(self, request):
-        # Получаем профиль пользователя, который пытается обновить свои данные
         try:
             profile = Profile.objects.get(user=self.request.user)
         except Profile.DoesNotExist:
             raise ValidationError("Вы не можете редактировать профиль другого пользователя.")
 
-        # Частичное обновление профиля
         serializer = self.serializer_class(profile, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
@@ -216,7 +178,6 @@ class MessageView(APIView):
 
     def get(self, request):
         user = request.user.profile
-        # Получение всех сообщений, отправленных и полученных текущим пользователем
         messages = Message.objects.filter(sender=user) | Message.objects.filter(recipient=user)
         serializer = MessageSerializer(messages, many=True)
         return Response(serializer.data)
@@ -227,26 +188,22 @@ class MessageView(APIView):
     )
     def post(self, request):
         sender = request.user.profile
-        recipient_username = request.data.get('recipient')  # Получаем имя пользователя получателя из данных запроса
+        recipient_username = request.data.get('recipient')
         print(recipient_username)
 
-        # Проверяем, что `recipient` передан в запросе
+
         if not recipient_username:
             raise ValidationError({'recipient': 'Recipient username is required.'})
 
         print(recipient_username['username'])
         try:
-            # Ищем пользователя по имени пользователя
             recipient_user = CustomUser.objects.get(email=recipient_username['email'])
-            # Получаем профиль получателя
             recipient = recipient_user.profile
         except CustomUser.DoesNotExist:
             raise ValidationError({'recipient': 'Recipient not found.'})
 
-        # Сериализация данных
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
-            # Сохраняем сообщение с отправителем и получателем
             serializer.save(sender=sender, recipient=recipient)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -259,7 +216,6 @@ class MessageDeatailView(APIView):
         responses={201: MessageSerializer},
     )
     def put(self, request, pk):
-        """Обновление сообщения, если оно еще не прочитано."""
         message = get_object_or_404(Message, pk=pk, sender=request.user.profile)
 
         if message.is_read:
@@ -276,7 +232,6 @@ class MessageDeatailView(APIView):
         responses={201: MessageSerializer},
     )
     def patch(self, request, pk):
-        """Частичное обновление сообщения, если оно еще не прочитано."""
         message = get_object_or_404(Message, pk=pk, sender=request.user.profile)
 
         if message.is_read:
@@ -289,7 +244,6 @@ class MessageDeatailView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        """Удаление сообщения, если оно еще не прочитано."""
         message = get_object_or_404(Message, pk=pk, sender=request.user.profile)
 
         if message.is_read:

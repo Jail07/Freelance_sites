@@ -13,8 +13,8 @@ class Project(models.Model):
     vote_ratio = models.IntegerField(default=0, null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True)
     id = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False)
-    required_workers = models.IntegerField(default=1)  # Сколько работников нужно
-    team_members = models.ManyToManyField(Profile, related_name='projects', blank=True)  # Члены команды
+    required_workers = models.IntegerField(default=1)
+    team_members = models.ManyToManyField(Profile, related_name='projects', blank=True)
 
     def __str__(self):
         return self.title
@@ -24,11 +24,9 @@ class Project(models.Model):
 
     @property
     def is_hidden(self):
-        """Скрыть проект, если команда набрана"""
         return self.team_members.count() >= self.required_workers
 
     def add_team_member(self, profile):
-        """Добавить участника в команду, если есть свободное место"""
         if not self.is_hidden:
             self.team_members.add(profile)
             self.save()
