@@ -18,7 +18,15 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'Freelance_site.pythonanywhere.com']
 
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:5173',
+]
 
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+]
+
+CORS_ALLOW_CREDENTIALS = True
 # Application definition
 
 LOGIN_URL = '/login/'
@@ -30,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework_simplejwt.token_blacklist',
 
     # libs
     'rest_framework',
@@ -81,8 +90,8 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'freelance_site',
-        'USER': 'free_user',
-        'PASSWORD': 'free69',
+        'USER': 'postgres',
+        'PASSWORD': '1234',
         'HOST': 'localhost',
         'PORT': 5432
     }

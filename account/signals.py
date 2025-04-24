@@ -46,7 +46,7 @@ def createProfile(sender, instance, created, **kwargs):
         email.attach_alternative(html_content, "text/html")
         EmailThread(email).start()
 
-
+# 1104181f-00d0-4266-947a-6a500a1f798e
 @receiver(post_save, sender=Profile)
 def updateUser(sender, instance, created, **kwargs):
     if not created:

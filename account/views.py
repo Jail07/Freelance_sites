@@ -1,3 +1,5 @@
+from tokenize import TokenError
+
 from rest_framework.exceptions import ValidationError, PermissionDenied
 from rest_framework.generics import get_object_or_404
 from rest_framework.views import APIView
@@ -42,6 +44,14 @@ class LoginUserView(APIView):
             })
         return Response({'detail': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
+
+class LogoutUserView(APIView):
+    # permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        response = Response({"detail": "User has been logged out."}, status=status.HTTP_200_OK)
+        response.delete_cookie("accessToken", samesite="None", secure=True)
+        return response
 
 class RegisterUserView(APIView):
     permission_classes = [AllowAny]

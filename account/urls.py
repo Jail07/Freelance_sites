@@ -5,11 +5,12 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
-    path('account/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('account/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
-    path('account/login/', views.LoginUserView.as_view(), name="api-login"),
-    path('account/register/', views.RegisterUserView.as_view(), name="api-register"),
+    path('auth/login/', views.LoginUserView.as_view(), name="api-login"),
+    path('auth/logout/', views.LogoutUserView.as_view(), name="api-logout"),
+    path('auth/register/', views.RegisterUserView.as_view(), name="api-register"),
 
     path('messages/', views.MessageView.as_view(), name='messages'),
     path('messages/<str:pk>/', views.MessageDeatailView.as_view(), name='message-detail'),
