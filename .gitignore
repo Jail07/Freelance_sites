@@ -1,3 +1,7 @@
 /.venv
 /.idea
 #/.env
+# Node (если frontend есть)
+node_modules/
+dist/
+build/
